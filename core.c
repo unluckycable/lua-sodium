@@ -93,7 +93,7 @@ const static int crypto_aead_xchacha20poly1305_encrypt(lua_State * L) {
   unsigned long long ciphertext_len;
 
   if (argc < 4) {
-    fprintf(stderr, "you must pass 4 arguments: encrypt_buffer(message, additional_data, nonce, key)!\n");
+    fprintf(stderr, "you must pass 4 arguments: encrypt_buffer(message, additional_data (can be nil), nonce, key)!\n");
     goto err;
   }
 
@@ -102,28 +102,31 @@ const static int crypto_aead_xchacha20poly1305_encrypt(lua_State * L) {
     goto err;
   }
   
-  size_t message_len;
+  size_t message_len = 0;
   const char *message = luaL_checklstring(L, 1, &message_len);
   if (message_len == 0) {
     fprintf(stderr, "message length should greater then zero!\n");
     goto err;
   }
 
-  if (lua_isstring(L, 2) != 1) {
-    fprintf(stderr, "second argument must be string: additional_data!\n");
-    goto err;
-  }
+  size_t additional_data_len = 0;
+  const unsigned char *additional_data = NULL;  
   
-  size_t additional_data_len;
-  const char *additional_data = luaL_checklstring(L, 2, &additional_data_len);
-  // additional data can be empty
+  if (lua_isstring(L, 2) == 1) {
+    additional_data = luaL_checklstring(L, 2, &additional_data_len);
+  } else if (lua_isnil(L, 2) == 1) {	  
+	  // additional data can be empty
+  } else {
+	  fprintf(stderr, "second argument must be string or nil: additional_data!\n");
+	  goto err;
+  }  
 
   if (lua_isstring(L, 3) != 1) {
     fprintf(stderr, "third argument must be string: nonce!\n");
     goto err;
   }
   
-  size_t nonce_len;
+  size_t nonce_len = 0;
   const char *nonce = luaL_checklstring(L, 3, &nonce_len);  
   if (nonce_len == 0) {
     fprintf(stderr, "nonce length should greater then zero!\n");
@@ -135,7 +138,7 @@ const static int crypto_aead_xchacha20poly1305_encrypt(lua_State * L) {
     goto err;
   }
   
-  size_t key_len;
+  size_t key_len = 0;
   const char *key = luaL_checklstring(L, 4, &key_len);  
   if (key_len == 0) {
     fprintf(stderr, "key length should greater then zero!\n");
@@ -148,11 +151,14 @@ const static int crypto_aead_xchacha20poly1305_encrypt(lua_State * L) {
     goto err;
   }
   memset(ciphertext, 0, size_ciphertext);
+  
   crypto_aead_xchacha20poly1305_ietf_encrypt(ciphertext, &ciphertext_len,
 					     message, message_len,
 					     additional_data, additional_data_len,
 					     NULL, nonce, key);
+					     
   lua_pushlstring(L, ciphertext, size_ciphertext);
+  
   free(ciphertext);
   return 1;
  err:
@@ -171,7 +177,7 @@ const static int crypto_aead_xchacha20poly1305_decrypt(lua_State * L) {
     goto err;  
   }
   
-  size_t ciphertext_len;
+  size_t ciphertext_len = 0;
   const unsigned char *ciphertext = luaL_checklstring(L, 1, &ciphertext_len);   
   if (ciphertext_len == 0) {
     fprintf(stderr, "ciphertext length should greater then zero!\n");
@@ -185,22 +191,25 @@ const static int crypto_aead_xchacha20poly1305_decrypt(lua_State * L) {
     goto err;
   }
   memset(decrypted, 0, decrypted_len);
-
-  if (lua_isstring(L, 2) != 1) {
-    fprintf(stderr, "secon argument must be string: additional_data!\n");
-    goto err;
-  }  
   
-  size_t additional_data_len;
-  const unsigned char *additional_data = luaL_checklstring(L, 2, &additional_data_len);
-  // additional data can be empty
-
+  size_t additional_data_len = 0;
+  const unsigned char *additional_data = NULL; 
+  
+  if (lua_isstring(L, 2) == 1) {
+    additional_data = luaL_checklstring(L, 2, &additional_data_len);
+  } else if (lua_isnil(L, 2) == 1) {	  
+	  // additional data can be empty
+  } else {
+	  fprintf(stderr, "second argument must be string or nil: additional_data!\n");
+	  goto err;
+  } 
+  
   if (lua_isstring(L, 3) != 1) {
     fprintf(stderr, "third argument must be string: nonce!\n");
     goto err;
   }
   
-  size_t nonce_len;
+  size_t nonce_len = 0;
   const unsigned char *nonce = luaL_checklstring(L, 3, &nonce_len);
   if (nonce_len == 0) {
     fprintf(stderr, "nonce length should greater then zero!\n");
@@ -212,7 +221,7 @@ const static int crypto_aead_xchacha20poly1305_decrypt(lua_State * L) {
     goto err;
   }
   
-  size_t key_len;
+  size_t key_len = 0;
   const unsigned char *key = luaL_checklstring(L, 4, &key_len);
   if (key_len == 0) {
     fprintf(stderr, "key length should greater then zero!\n");
@@ -228,6 +237,7 @@ const static int crypto_aead_xchacha20poly1305_decrypt(lua_State * L) {
 
   lua_pushlstring(L, decrypted, decrypted_len);
   lua_pushnumber(L, rc);
+  
   free(decrypted);
   return 2;
  err:
