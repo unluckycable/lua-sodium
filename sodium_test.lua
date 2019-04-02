@@ -33,7 +33,8 @@ if test_key:len() ~= 32 then
 	os.exit(-1)
 end
 
---[[ RFC test vector for xChaChaPoly1305 ]]
+print(string.format("\ntest with RFC test vector for xChaChaPoly1305\n"))
+
 local message = "Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it."
 local aad = string.char(
 		0x50, 0x51, 0x52, 0x53, 0xc0, 0xc1, 0xc2, 0xc3, 
@@ -86,5 +87,54 @@ end
 
 if decrypted == message then
 	print("CHANGED CHIPHER: TEST FAIL. by changed ciphertext decripted into original message")
+	os.exit(-1)
+end
+
+print(string.format("\ntest with empty AAD (nil string and empty string)\n"))
+--[[ nil AAD ]]
+aad = nil
+
+ciphertext = lua.crypto_aead_xchacha20poly1305_encrypt(message, aad, nonce, key)
+print(string.format('ciphertext: %s, len: %d', ciphertext:tohex(), ciphertext:len()))
+
+if ciphertext:len() ~= (message:len() + 16) then
+	print("TEST FAIL! Ciphertext length invalid")	
+	os.exit(-1)
+end	
+
+decrypted, rc = lua.crypto_aead_xchacha20poly1305_decrypt(ciphertext, aad, nonce, key)
+print('decrypted', decrypted)
+
+if rc ~= 0 then
+	print("TEST FAIL, by rc != 0: ", rc)
+	os.exit(-1)
+end
+
+if decrypted ~= message then
+	print("TEST FAIL! Decrypted message != original message")
+	os.exit(-1)
+end
+
+--[[ empty AAD ]]
+aad = string.char()
+
+ciphertext = lua.crypto_aead_xchacha20poly1305_encrypt(message, aad, nonce, key)
+print(string.format('ciphertext: %s, len: %d', ciphertext:tohex(), ciphertext:len()))
+
+if ciphertext:len() ~= (message:len() + 16) then
+	print("TEST FAIL! Ciphertext length invalid")	
+	os.exit(-1)
+end	
+
+decrypted, rc = lua.crypto_aead_xchacha20poly1305_decrypt(ciphertext, aad, nonce, key)
+print('decrypted', decrypted)
+
+if rc ~= 0 then
+	print("TEST FAIL, by rc != 0: ", rc)
+	os.exit(-1)
+end
+
+if decrypted ~= message then
+	print("TEST FAIL! Decrypted message != original message")
 	os.exit(-1)
 end
